@@ -1,0 +1,3 @@
+# SmartAgentUtil.java
+
+智能多智能体系统的通用工具类，涵盖 AI 响应解析、类型转换和状态管理。`parseAiClassification` 将原始 AI 分类文本（检查 "academic_research"、"lifestyle_travel"、"encyclopedia"、"data_analysis" 等关键词）转换为 `AgentType` 枚举，默认值为 `GENERAL_RESEARCH`。`parseAiSearchPlatformSelection` 将 AI 搜索平台响应映射到 `SearchPlatform` 枚举值，并对代码块标记进行特殊处理。`convertToSearchEnum` 将 `SearchPlatform` 桥接转换为 `SearchEnum`，对于需要专用工具调用（OpenAlex、OpenTripMap、TripAdvisor、Wikipedia、WorldBank、Google Scholar）而非通用搜索的工具调用平台返回 null。`isToolCallingPlatform` 识别此类平台。`isSearchEngineEnabled` 检查 `SearchEnum` 是否在启用列表中。`createSmartAgentStateUpdate` 构建包含选定搜索平台、智能体类型、计数和主引擎的状态更新映射。包含内部记录类 `SearchSelectionResult`，封装搜索枚举、平台、智能体类型和工具调用标志。

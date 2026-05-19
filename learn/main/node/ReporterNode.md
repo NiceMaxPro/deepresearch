@@ -1,0 +1,3 @@
+# ReporterNode
+
+该节点通过聚合深度研究流水线中收集的所有信息来生成最终的研究报告。它从背景调查结果、研究计划标题和思路、所有并行研究者和编码节点的输出以及任何专业知识库 RAG 内容中组装上下文。组装好的消息发送到 reporterAgent ChatClient，后者流式生成报告。完成后，该节点通过 SessionContextService.addSessionHistory 保存最终报告，将助手响应存储在短期记忆中供未来对话上下文使用，并在图形状态中输出 final_report 以及 thread_id。

@@ -24,6 +24,7 @@ import java.io.Serializable;
  * @author vlsmb
  * @since 2025/8/6
  */
-public record GraphId(@JsonProperty("session_id") String sessionId,
+public record GraphId(
+        @JsonProperty("session_id") String sessionId,
 		@JsonProperty("thread_id") String threadId) implements Serializable {
 }

@@ -169,47 +169,97 @@ public class DeepResearchConfiguration {
 
 		KeyStrategyFactory keyStrategyFactory = () -> {
 			HashMap<String, KeyStrategy> keyStrategyHashMap = new HashMap<>();
-			// 条件边控制：跳转下一个节点
+
+			// ============================================================
+			// 条件边路由控制 —— 各 Dispatcher 读这些 key 决定下一跳
+			// ============================================================
+
+			// ShortUserRoleMemoryDispatcher: 值为 "coordinator" 或 END
 			keyStrategyHashMap.put("short_user_role_next_node", new ReplaceStrategy());
+			// CoordinatorDispatcher: 值为 "rewrite_multi_query" 或 END
 			keyStrategyHashMap.put("coordinator_next_node", new ReplaceStrategy());
+			// RewriteAndMultiQueryDispatcher: 值为 "background_investigator" / "user_file_rag" / END
 			keyStrategyHashMap.put("rewrite_multi_query_next_node", new ReplaceStrategy());
+			// BackgroundInvestigationDispatcher: 值为 "planner" / "reporter" / END
 			keyStrategyHashMap.put("background_investigation_next_node", new ReplaceStrategy());
+			// （预留）planner 节点的条件路由 key
 			keyStrategyHashMap.put("planner_next_node", new ReplaceStrategy());
+			// InformationDispatcher: 值为 "human_feedback" / "research_team" / "planner" / "reporter" / END
 			keyStrategyHashMap.put("information_next_node", new ReplaceStrategy());
+			// HumanFeedbackDispatcher: 值为 "research_team" / "planner" / END
 			keyStrategyHashMap.put("human_next_node", new ReplaceStrategy());
+			// ResearchTeamDispatcher: 值为 "professional_kb_decision" / "parallel_executor" / END
 			keyStrategyHashMap.put("research_team_next_node", new ReplaceStrategy());
-			// 用户输入
+
+			// ============================================================
+			// 用户输入参数 —— ChatRequestProcess 在请求入口注入
+			// ============================================================
+
+			// 用户原始问题文本
 			keyStrategyHashMap.put("query", new ReplaceStrategy());
+			// RewriteAndMultiQueryNode 产出的多角度搜索查询列表
 			keyStrategyHashMap.put("optimize_queries", new ReplaceStrategy());
+			// 会话线程 ID，用于关联多轮对话 & 报告存取
 			keyStrategyHashMap.put("thread_id", new ReplaceStrategy());
+			// CoordinatorNode 设置：true=走深度研究管线，false=直接聊天回复
 			keyStrategyHashMap.put("enable_deepresearch", new ReplaceStrategy());
+			// HumanFeedbackNode 读取：true=跳过人工确认直接执行计划
 			keyStrategyHashMap.put("auto_accepted_plan", new ReplaceStrategy());
+			// 计划执行的最大迭代轮次上限
 			keyStrategyHashMap.put("plan_max_iterations", new ReplaceStrategy());
+			// 单次计划最大研究步骤数
 			keyStrategyHashMap.put("max_step_num", new ReplaceStrategy());
+			// 用户传入的 MCP 服务器配置（JSON），运行时动态合并到静态配置
 			keyStrategyHashMap.put("mcp_settings", new ReplaceStrategy());
+			// RewriteAndMultiQueryNode 读取：每次扩展生成的查询数量
 			keyStrategyHashMap.put("optimize_query_num", new ReplaceStrategy());
+			// 用户上传的文件资源列表，触发 user_file_rag 分支
 			keyStrategyHashMap.put("user_upload_file", new ReplaceStrategy());
+			// 会话 ID，GraphProcess 用于管理多轮图执行的生命周期
 			keyStrategyHashMap.put("session_id", new ReplaceStrategy());
 
+			// HumanFeedbackNode 读取：用户是否已提交反馈（布尔标记）
 			keyStrategyHashMap.put("feedback", new ReplaceStrategy());
+			// HumanFeedbackNode 读取：用户反馈的具体文本内容
 			keyStrategyHashMap.put("feedback_content", new ReplaceStrategy());
 
-			// 专业知识库决策相关
+			// ============================================================
+			// 专业知识库决策 —— ProfessionalKbDecisionNode / ProfessionalKbDispatcher
+			// ============================================================
+
+			// ProfessionalKbDecisionNode 设置，ProfessionalKbDispatcher 读取：是否需要查询知识库
 			keyStrategyHashMap.put("use_professional_kb", new ReplaceStrategy());
+			// ProfessionalKbDecisionNode 设置：选中的知识库列表
 			keyStrategyHashMap.put("selected_knowledge_bases", new ReplaceStrategy());
 
-			// 节点输出
+			// ============================================================
+			// 节点输出产物 —— 上游节点写入，下游节点读取
+			// ============================================================
+
+			// BackgroundInvestigationNode 产出：背景调查报告文本
 			keyStrategyHashMap.put("background_investigation_results", new ReplaceStrategy());
+			// BackgroundInvestigationNode 产出：搜索到的网站信息列表
 			keyStrategyHashMap.put("site_information", new ReplaceStrategy());
+			// ResearcherNode / CoderNode 汇总写入，ReporterNode 读取：所有研究步骤的执行结果
 			keyStrategyHashMap.put("output", new ReplaceStrategy());
+			// 当前计划迭代计数（每轮重规划 +1）
 			keyStrategyHashMap.put("plan_iterations", new ReplaceStrategy());
+			// InformationNode 产出，PlannerNode / ResearcherNode 读取：当前的结构化 Plan 对象
 			keyStrategyHashMap.put("current_plan", new ReplaceStrategy());
+			// ReflectionProcessor 写入：反思审查结果（通过/不通过 + 改进建议）
 			keyStrategyHashMap.put("observations", new ReplaceStrategy());
+			// ReporterNode 产出：最终 Markdown 格式的研究报告全文
 			keyStrategyHashMap.put("final_report", new ReplaceStrategy());
+			// PlannerNode 产出：LLM 原始输出的规划文本（InformationNode 解析前）
 			keyStrategyHashMap.put("planner_content", new ReplaceStrategy());
 
-			for (int i = 0; i < deepResearchProperties.getParallelNodeCount()
-				.get(ParallelEnum.RESEARCHER.getValue()); i++) {
+			// ============================================================
+			// 并行节点输出槽位 —— researcher_0..N 和 coder_0..M 各自写自己的槽位
+			// 避免并行写入 output 时互相覆盖，各自先写独立 key，最后汇总
+			// ============================================================
+			for (int i = 0; i < deepResearchProperties
+					.getParallelNodeCount()
+					.get(ParallelEnum.RESEARCHER.getValue()); i++) {
 				keyStrategyHashMap.put(ParallelEnum.RESEARCHER.getValue() + "_content_" + i, new ReplaceStrategy());
 			}
 			for (int i = 0; i < deepResearchProperties.getParallelNodeCount().get(ParallelEnum.CODER.getValue()); i++) {

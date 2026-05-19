@@ -35,8 +35,20 @@ public class ChatRequestProcess {
 	 */
 	public static ChatRequest getDefaultChatRequest(ChatRequest chatRequest, SearchBeanUtil searchBeanUtil) {
 		if (chatRequest == null) {
-			return new ChatRequest("__default__", "", 1, 3, true, null, true, Collections.emptyMap(), "草莓蛋糕怎么做呀。",
-					searchBeanUtil.getFirstAvailableSearch().orElse(null), true, 3, false);
+            // 方便测试，生产环境必须存在。
+			return new ChatRequest("__default__",
+                    "",
+                    1,
+                    3,
+                    true,
+                    null,
+                    true,
+                    Collections.emptyMap(),
+                    "草莓蛋糕怎么做呀。",
+					searchBeanUtil.getFirstAvailableSearch().orElse(null),
+                    true,
+                    3,
+                    false);
 		}
 		else {
 			return new ChatRequest(
@@ -58,10 +70,19 @@ public class ChatRequestProcess {
 	}
 
 	public static ChatRequest updateThreadId(ChatRequest chatRequest, String threadId) {
-		return new ChatRequest(chatRequest.sessionId(), threadId, chatRequest.maxPlanIterations(),
-				chatRequest.maxStepNum(), chatRequest.autoAcceptPlan(), chatRequest.interruptFeedback(),
-				chatRequest.enableDeepResearch(), chatRequest.mcpSettings(), chatRequest.query(),
-				chatRequest.searchEngine(), chatRequest.enableSearchFilter(), chatRequest.optimizeQueryNum(),
+		return new ChatRequest(
+                chatRequest.sessionId(),
+                threadId,
+                chatRequest.maxPlanIterations(),
+				chatRequest.maxStepNum(),
+                chatRequest.autoAcceptPlan(),
+                chatRequest.interruptFeedback(),
+				chatRequest.enableDeepResearch(),
+                chatRequest.mcpSettings(),
+                chatRequest.query(),
+				chatRequest.searchEngine(),
+                chatRequest.enableSearchFilter(),
+                chatRequest.optimizeQueryNum(),
 				chatRequest.isUploadFile());
 	}
 

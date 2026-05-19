@@ -1,0 +1,3 @@
+# DeepResearchConfiguration.java
+
+Spring `@Configuration` 核心配置类，是整个深度研究工作流的大脑。定义 `deepResearch` Bean——一个 `StateGraph` 状态图，编排了从用户输入到最终报告生成的完整工作流管线。管线节点依次为：`short_user_role_memory` → `coordinator` → `rewrite_multi_query` → `background_investigator` → `user_file_rag` → `planner` → `professional_kb_decision` → `professional_kb_rag` → `information` → `human_feedback` → `research_team` → `parallel_executor` → `reporter`。通过 `addConditionalEdges` 使用 Dispatcher 实现条件路由，支持动态跳转。`configureParallelNodes` 方法根据配置动态创建多个并行的 Researcher 和 Coder 节点，使用 `KeyStrategyFactory` 管理状态键的替换策略。还使用 `DeepResearchStateSerializer` 进行状态序列化。

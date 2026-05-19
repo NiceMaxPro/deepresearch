@@ -86,13 +86,21 @@ public class GraphProcess {
 		return new GraphId(sessionId, String.format("%s-%d", sessionId, count));
 	}
 
-	public void handleHumanFeedback(GraphId graphId, ChatRequest chatRequest, Map<String, Object> objectMap,
-			RunnableConfig runnableConfig, Sinks.Many<ServerSentEvent<String>> sink) throws GraphRunnerException {
+	public void handleHumanFeedback(GraphId graphId,
+                                    ChatRequest chatRequest,
+                                    Map<String, Object> objectMap,
+                                    RunnableConfig runnableConfig,
+                                    Sinks.Many<ServerSentEvent<String>> sink) throws GraphRunnerException {
+        // 1. 把反馈内容塞进状态
 		objectMap.put("feedback", chatRequest.interruptFeedback());
+        // 2. 从 MemorySaver 取出之前的 checkpoint
 		StateSnapshot stateSnapshot = compiledGraph.getState(runnableConfig);
 		OverAllState state = stateSnapshot.state();
+        // 3. 标记为"恢复模式"
 		state.withResume();
+        // 4. 注入反馈，并指定从 research_team 节点恢复
 		state.withHumanFeedback(new OverAllState.HumanFeedback(objectMap, "research_team"));
+        // 5. 从初始节点（human_feedback）继续跑，而不是从 START
 		Flux<NodeOutput> resultFuture = compiledGraph.fluxStreamFromInitialNode(state, runnableConfig);
 		processStream(graphId, resultFuture, sink);
 	}

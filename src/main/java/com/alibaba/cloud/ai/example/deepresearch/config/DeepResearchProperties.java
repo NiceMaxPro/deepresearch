@@ -45,9 +45,14 @@ public class DeepResearchProperties {
 	private Map<String, Set<String>> mcpClientMapping = Maps.newHashMap();
 
 	/**
-	 * 图执行的最大迭代次数
+	 * 图执行的最大迭代次数，防止回环，进入死循环。
 	 */
 	private int maxIterations = 50;
+
+    /**
+     * 可用搜索引擎
+     */
+    private List<SearchEnum> searchList = List.of();
 
 	public Map<String, Integer> getParallelNodeCount() {
 		return parallelNodeCount;
@@ -73,7 +78,7 @@ public class DeepResearchProperties {
 		this.maxIterations = maxIterations;
 	}
 
-	private List<SearchEnum> searchList = List.of();
+
 
 	public List<SearchEnum> getSearchList() {
 		return searchList;

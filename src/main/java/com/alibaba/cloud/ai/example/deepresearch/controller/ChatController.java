@@ -103,8 +103,10 @@ public class ChatController {
 	 * handling.
 	 */
 	@PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    // 用 ServerSentEvent 不是为了花哨，是为了让前端能用标准的 SSE 事件监听机制区分正常消息和错误，而不是去解析 data 内容再判断。
 	public Flux<ServerSentEvent<String>> chatStream(@RequestBody(required = false) ChatRequest chatRequest)
 			throws GraphRunnerException, IllegalArgumentException {
+        // 构建请求，getDefaultChatRequest方便测试做的分支，生产中不使用这种方式。
 		chatRequest = ChatRequestProcess.getDefaultChatRequest(chatRequest, searchBeanUtil);
 		if (searchBeanUtil.getSearchService(chatRequest.searchEngine()).isEmpty()) {
 			throw new IllegalArgumentException("Search Engine not available.");
@@ -114,17 +116,24 @@ public class ChatController {
 		GraphId graphId = graphProcess.createNewGraphId(chatRequest.sessionId());
 		chatRequest = ChatRequestProcess.updateThreadId(chatRequest, graphId.threadId());
 
-		RunnableConfig runnableConfig = RunnableConfig.builder().threadId(chatRequest.threadId()).build();
+        //threadId 控制"图从哪里开始跑" → 每问换新，从头跑，ChatMemory 控制"AI 记得什么"   → 全局窗口，不受 threadId 影响
+        // 这个RunnableConfig只给图使用。
+        RunnableConfig runnableConfig = RunnableConfig.builder().threadId(chatRequest.threadId()).build();
 
 		Map<String, Object> objectMap = new HashMap<>();
 		// Create a unicast sink to emit ServerSentEvents
+        // sink 是线程池和响应流之间的桥梁。
+        // 要用线程池的原因不是为了提高并发，而是为了使用Future的cancel来控制图的中断
+        // 使用flux自带的取消只是取消订阅，但是并不中断请求，节点代码还在跑，会造成资源浪费。
 		Sinks.Many<ServerSentEvent<String>> sink = Sinks.many().unicast().onBackpressureBuffer();
 
 		// Handle human feedback if auto-accept is disabled and feedback is provided
+        // 处理HITL问题的多次请求。处理HITL的反馈就走这个分支。
 		if (!chatRequest.autoAcceptPlan() && StringUtils.hasText(chatRequest.interruptFeedback())) {
 			graphProcess.handleHumanFeedback(graphId, chatRequest, objectMap, runnableConfig, sink);
 		}
 		// First question
+        // 正常就做这个分支
 		else {
 			ChatRequestProcess.initializeObjectMap(chatRequest, objectMap);
 			logger.info("init inputs: {}", objectMap);
@@ -133,7 +142,9 @@ public class ChatController {
 		}
 
 		return sink.asFlux()
+             // 客户端断联 后 操作
 			.doOnCancel(() -> logger.info("Client disconnected from stream"))
+             // 服务端报错，给前端发送一帧断联消息。
 			.onErrorResume(throwable -> {
 				logger.error("Error occurred during streaming", throwable);
 				return Mono.just(ServerSentEvent.<String>builder()
