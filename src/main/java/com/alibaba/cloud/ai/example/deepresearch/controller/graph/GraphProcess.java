@@ -117,7 +117,7 @@ public class GraphProcess {
 
 	public void processStream(GraphId graphId, Flux<NodeOutput> generator, Sinks.Many<ServerSentEvent<String>> sink) {
 		final String graphIdStr = this.safeObjectToJson(graphId);
-		// 创建一个任务，且遇见中断时停止图的运行
+        // 创建一个任务，且遇见中断时停止图的运行
 		Future<?> future = executor.submit(() -> {
 			generator.doOnNext(output -> {
 				String nodeName = output.node();
